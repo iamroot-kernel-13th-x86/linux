@@ -1,6 +1,7 @@
 /*
- *	header.S
- *
+ *	header.S ) bootsect의 시작위치. vmlinux의 최초 src code.
+ *		   header.S 내 대부분의 code는 real-mode 하의 C언어 환경을 준비한다.
+ 
  *	Copyright (C) 1991, 1992 Linus Torvalds
  *
  *	Based on bootsect.S and setup.S
@@ -49,13 +50,14 @@ bootsect_start:
 #endif
 
 	# Normalize the start address
-	ljmp	$BOOTSEG, $start2
-
+	ljmp	$BOOTSEG, $start2 		# 현재의 linux는 반드시 GRUB와 같은 boot loader를 통해 시스템이 가동된다.
+						# 따라서, 위 code는 실행되지 않는 code이며, BIOS에 의해 직접 실행이 될 경우,
+						# reboot를 요구하는 메세지를 출력한다. (bugger_off_msg)
 start2:
-	movw	%cs, %ax
-	movw	%ax, %ds
-	movw	%ax, %es
-	movw	%ax, %ss
+	movw	%cs, %ax			# grub에 의해 올려진 kernel의 시작부분.
+	movw	%ax, %ds			# 하지만, Compile 과정에서 setup.bin을 링크하기 위한 setup.ld(링커 스크립트)에
+	movw	%ax, %es			# 기술된 바에 의하면, Entry를 _start: 레이블로 명시하고 있다.
+	movw	%ax, %ss			# 따라서, grub가 vmlinuz를 memory에 load한 후 앞의 0x200(512b)는 건너뛰게 된다.
 	xorw	%sp, %sp
 	sti
 	cld
@@ -75,12 +77,12 @@ bs_die:
 	# Allow the user to press a key, then reboot
 	xorw	%ax, %ax
 	int	$0x16
-	int	$0x19
+	int	$0x19				# reboot
 
 	# int 0x19 should never return.  In case it does anyway,
 	# invoke the BIOS reset code...
-	ljmp	$0xf000,$0xfff0
-
+	ljmp	$0xf000,$0xfff0			# 0xfff0 => BIOS 호출 주소 & reboot 코드
+						# int 0x19가 실패시에 해당 방법으로 reboot를 수행한다.
 #ifdef CONFIG_EFI_STUB
 	.org	0x3c
 	#
@@ -277,7 +279,8 @@ section_table:
 	.globl	sentinel
 sentinel:	.byte 0xff, 0xff        /* Used to detect broken loaders */
 
-	.globl	hdr
+	.globl	hdr				# setup header. hdr 변수들은 모든 초기화 기간 중에 사용되는 data들로,
+						# setup.ld에 명시된 .header의 주소 '.=495'가 이 변수들의 시작 주소가 된다.
 hdr:
 setup_sects:	.byte 0			/* Filled in by build.c */
 root_flags:	.word ROOT_RDONLY
@@ -289,7 +292,7 @@ boot_flag:	.word 0xAA55
 
 	# offset 512, entry point
 
-	.globl	_start
+	.globl	_start 				# vmlinux의 두번째 512Byte가 시작되는 곳.
 _start:
 		# Explicitly enter this as bytes, or the assembler
 		# tries to generate a 3-byte jump here, which causes
@@ -451,6 +454,8 @@ init_size:		.long INIT_SIZE		# kernel initialization size
 handover_offset:	.long 0			# Filled in by build.c
 
 # End of setup header #####################################################
+# 이 곳까지의 Code는 모두 system 초기화를 위한 변수들이다. 맨 앞의 bootsect는 비사용 code이지만,
+# 0x01F1에서 시작되는 hdr 변수들은 중요하게 사용된다.
 
 	.section ".entrytext", "ax"
 start_of_setup:
@@ -470,27 +475,33 @@ start_of_setup:
 	je	2f		# -> assume %sp is reasonably set
 
 	# Invalid %ss, make up a new stack
-	movw	$_end, %dx
-	testb	$CAN_USE_HEAP, loadflags
-	jz	1f
-	movw	heap_end_ptr, %dx
-1:	addw	$STACK_SIZE, %dx
-	jnc	2f
+	movw	$_end, %dx	# _end는 모든 setup.bin의 끝을 의미한다. => setup 단계에서 C의 stack top.
+				# vmilinux를 링크하는 과정에서 script 내에서 _end가 존재하는데, 이는 압축되어 vmlinux가
+				# 되므로, 현재의 _end와는 별개임을 주의.
+				
+	testb	$CAN_USE_HEAP, loadflags	# heap 영역을 사용하는지 확인한다.
+	jz	1f				# heap이 사용중이 아니라면, zero flag = 0
+	movw	heap_end_ptr, %dx 		# heap_end_ptr => .word _end + STACK_SIZE - 512
+						# STACK_SIZE=512 로 정의 되어 있다. 따라서 heap_end_ptr은 _end를 의미한다.
+1:	addw	$STACK_SIZE, %dx		# lable1: 에서 STACK_SIZE를 dx에 더하며,
+	jnc	2f				# 이 과정에서 carry가 발생하지 않으면 jmp
 	xorw	%dx, %dx	# Prevent wraparound
 
 2:	# Now %dx should point to the end of our stack space
-	andw	$~3, %dx	# dword align (might as well...)
-	jnz	3f
-	movw	$0xfffc, %dx	# Make sure we're not zero
-3:	movw	%ax, %ss
-	movzwl	%dx, %esp	# Clear upper half of %esp
-	sti			# Now we should have a working stack
+	andw	$~3, %dx	# dword align (might as well...) 	# 4byte 단위로 정리하기 위해 not 0x3과 and 연산.
+	jnz	3f 							# 결과 값이 0이라면, wraparound가 발생한 것.
+	movw	$0xfffc, %dx	# Make sure we're not zero 		# 따라서, 가장 큰 값(0xfffc)를 할당한다.
+3:	movw	%ax, %ss 						# ax = ds 이므로, ss = ds.
+	movzwl	%dx, %esp	# Clear upper half of %esp 		# 지금까지 계산한 값(dx)를 esp(offset)으로 사용.
+	sti			# Now we should have a working stack	# 결국 data와 stack segment는 같고, offset만 달리해서 사용.
 
 # We will have entered with %cs = %ds+0x20, normalize %cs so
 # it is on par with the other segments.
+# grub이 처음 setup code로 진입할 때, ds 값은 0x90000이지만, cs는 0x90200을 갖는다.
+# 이는 setup header(hdr)가 앞쪽 512byte에 위치하며, 실제 code의 시작은 512byte 이후부터이기 때문.
 	pushw	%ds
 	pushw	$6f
-	lretw
+	lretw 			# ret 명령으로 eip(6f), cs(ds)를 pop하며, 여기서 cs = ds.
 6:
 
 # Check signature at end of setup
@@ -506,9 +517,9 @@ start_of_setup:
 	rep; stosl
 
 # Jump to C code (should not return)
-	calll	main
+	calll	main 		# boot/main.c 호출 (실질적인 header.S의 종료 => call이지만 return하지 않는다.)
 
-# Setup corrupt somehow...
+# Setup corrupt somehow...	# 만일 return 되었을 경우, error 메세지 출력 후, 시스템 die.
 setup_bad:
 	movl	$setup_corrupt, %eax
 	calll	puts
