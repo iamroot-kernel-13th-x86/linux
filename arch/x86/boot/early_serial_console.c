@@ -40,7 +40,7 @@ static void early_serial_init(int port, int baud)
 
 static void parse_earlyprintk(void)
 {
-	int baud = DEFAULT_BAUD;
+        int baud = DEFAULT_BAUD; //9600
 	char arg[32];
 	int pos = 0;
 	int port = 0;

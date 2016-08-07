@@ -1,7 +1,7 @@
 /*
  *	header.S ) bootsect의 시작위치. vmlinux의 최초 src code.
  *		   header.S 내 대부분의 code는 real-mode 하의 C언어 환경을 준비한다.
- 
+n
  *	Copyright (C) 1991, 1992 Linus Torvalds
  *
  *	Based on bootsect.S and setup.S
@@ -478,7 +478,7 @@ start_of_setup:
 	movw	$_end, %dx	# _end는 모든 setup.bin의 끝을 의미한다. => setup 단계에서 C의 stack top.
 				# vmilinux를 링크하는 과정에서 script 내에서 _end가 존재하는데, 이는 압축되어 vmlinux가
 				# 되므로, 현재의 _end와는 별개임을 주의.
-				
+
 	testb	$CAN_USE_HEAP, loadflags	# heap 영역을 사용하는지 확인한다.
 	jz	1f				# heap이 사용중이 아니라면, zero flag = 0
 	movw	heap_end_ptr, %dx 		# heap_end_ptr => .word _end + STACK_SIZE - 512

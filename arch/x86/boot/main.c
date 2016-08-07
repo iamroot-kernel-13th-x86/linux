@@ -14,7 +14,7 @@
  */
 
 #include "boot.h"
-#include "string.h"
+#includse "string.h"
 
 struct boot_params boot_params __attribute__((aligned(16)));
 
@@ -34,23 +34,25 @@ static void copy_boot_params(void)
 		u16 cl_offset;
 	};
 	const struct old_cmdline * const oldcmd =
-		(const struct old_cmdline *)OLD_CL_ADDRESS;
+            (const struct old_cmdline *)OLD_CL_ADDRESS; //0x20 - include/asm/setup.h
+        BUILD_BUG_ON(sizeof boot_params != 4096); // boot_params: /arch/x86/include/uapi/asm/bootparam.h
+                                                  //BUILD_BUG_ON - /arch/x86/boot/boot.h
+	memcpy(&boot_params.hdr, &hdr, sizeof hdr); // hdr - /arch/x86/boot/header.S
+                                                    // memcpy => /arch/x86/boot/compressed/string.c
 
-	BUILD_BUG_ON(sizeof boot_params != 4096);
-	memcpy(&boot_params.hdr, &hdr, sizeof hdr);
 
-	if (!boot_params.hdr.cmd_line_ptr &&
-	    oldcmd->cl_magic == OLD_CL_MAGIC) {
+	if (!boot_params.hdr.cmd_line_ptr &&        //hdr.cmd_line_ptr = 0
+	    oldcmd->cl_magic == OLD_CL_MAGIC) {     // OLD_CL_MAGIC = 0xA33F - 참조  /Documentation/x86/boot.txt
 		/* Old-style command line protocol. */
 		u16 cmdline_seg;
 
 		/* Figure out if the command line falls in the region
 		   of memory that an old kernel would have copied up
 		   to 0x90000... */
-		if (oldcmd->cl_offset < boot_params.hdr.setup_move_size)
-			cmdline_seg = ds();
+		if (oldcmd->cl_offset < boot_params.hdr.setup_move_size) //modern linux인 경우 - header.S 0x8000
+                    cmdline_seg = ds(); // ds()는 DS register를 return -> ds값은 부트로더가 결정(동적) // https://www.kernel.org/doc/Documentation/x86/boot.txt
 		else
-			cmdline_seg = 0x9000;
+                    cmdline_seg = 0x9000; //과거 리눅스는 0x9000번이 고정
 
 		boot_params.hdr.cmd_line_ptr =
 			(cmdline_seg << 4) + oldcmd->cl_offset;
@@ -131,10 +133,12 @@ static void init_heap(void)
 		     "may be limited!\n");
 	}
 }
-
+//iamroot 20160730 start
 void main(void)
 {
-	/* First, copy the boot header into the "zeropage" */
+    /* First, copy the boot header into the "zeropage" */
+    // boot header
+    // zeropage - https://en.wikipedia.org/wiki/Zero_page
 	copy_boot_params();
 
 	/* Initialize the early-boot console */
