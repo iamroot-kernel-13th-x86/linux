@@ -30,6 +30,13 @@
 
 /* Useful macros */
 #define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
+// !! 2이상의 값이 들어가도 1로
+// true == 1이상 ex) !!(3) == !!true == true == 1
+// false == 0은 !!false == 0
+// char[1] 컴파일 OK
+// char[-1] 컴파일 실패
+// void는 의미론적으로 표현.
+// 참조 -  https://scaryreasoner.wordpress.com/2009/02/28/checking-sizeof-at-compile-time/
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)))
 

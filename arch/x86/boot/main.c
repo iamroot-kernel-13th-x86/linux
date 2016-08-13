@@ -52,7 +52,7 @@ static void copy_boot_params(void)
 		if (oldcmd->cl_offset < boot_params.hdr.setup_move_size) //modern linux인 경우 - header.S 0x8000
                     cmdline_seg = ds(); // ds()는 DS register를 return -> ds값은 부트로더가 결정(동적) // https://www.kernel.org/doc/Documentation/x86/boot.txt
 		else
-                    cmdline_seg = 0x9000; //과거 리눅스는 0x9000번이 고정
+                    cmdline_seg = 0x9000;
 
 		boot_params.hdr.cmd_line_ptr =
 			(cmdline_seg << 4) + oldcmd->cl_offset;
@@ -145,6 +145,8 @@ void main(void)
 	console_init();
 	if (cmdline_find_option_bool("debug"))
 		puts("early console in setup code\n");
+        //20160813 완료
+
 
 	/* End of heap check */
 	init_heap();

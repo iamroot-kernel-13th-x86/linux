@@ -506,6 +506,8 @@ start_of_setup:
 
 # Check signature at end of setup
 	cmpl	$0x5a5aaa55, setup_sig
+
+
 	jne	setup_bad
 
 # Zero the bss
