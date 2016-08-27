@@ -121,7 +121,7 @@ static void init_heap(void)
 
 	if (boot_params.hdr.loadflags & CAN_USE_HEAP) {
 		asm("leal %P1(%%esp),%0"
-		    : "=r" (stack_end) : "i" (-STACK_SIZE));
+		    : "=r" (stack_end) : "i" (-STACK_SIZE)); //STACK_SIZE == 512 == 0x200
 
 		heap_end = (char *)
 			((size_t)boot_params.hdr.heap_end_ptr + 0x200);
@@ -149,7 +149,7 @@ void main(void)
 
 
 	/* End of heap check */
-	init_heap();
+	init_heap();						//heap 초기화
 
 	/* Make sure we have all the proper CPU support */
 	if (validate_cpu()) {

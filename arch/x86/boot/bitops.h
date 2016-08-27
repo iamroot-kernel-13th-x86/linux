@@ -19,7 +19,7 @@
 static inline int constant_test_bit(int nr, const void *addr)
 {
 	const u32 *p = (const u32 *)addr;
-	return ((1UL << (nr & 31)) & (p[nr >> 5])) != 0;
+	return ((1UL << (nr & 31)) & (p[nr >> 5])) != 0; 
 }
 static inline int variable_test_bit(int nr, const void *addr)
 {
@@ -31,7 +31,7 @@ static inline int variable_test_bit(int nr, const void *addr)
 }
 
 #define test_bit(nr,addr) \
-(__builtin_constant_p(nr) ? \
+(__builtin_constant_p(nr) ? \					// nr이 상수인지 체크 http://blog.dasomoli.org/335
  constant_test_bit((nr),(addr)) : \
  variable_test_bit((nr),(addr)))
 

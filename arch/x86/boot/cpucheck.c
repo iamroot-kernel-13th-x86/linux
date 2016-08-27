@@ -35,13 +35,13 @@ static const int req_level = CONFIG_X86_MINIMUM_CPU_FAMILY;
 
 static const u32 req_flags[NCAPINTS] =
 {
-	REQUIRED_MASK0,
-	REQUIRED_MASK1,
+	REQUIRED_MASK0,					//intel
+	REQUIRED_MASK1,					//amd
 	0, /* REQUIRED_MASK2 not implemented in this file */
 	0, /* REQUIRED_MASK3 not implemented in this file */
-	REQUIRED_MASK4,
+	REQUIRED_MASK4,					//intel
 	0, /* REQUIRED_MASK5 not implemented in this file */
-	REQUIRED_MASK6,
+	REQUIRED_MASK6,					//amd
 	0, /* REQUIRED_MASK7 not implemented in this file */
 };
 
@@ -103,16 +103,16 @@ int check_cpu(int *cpu_level_ptr, int *req_level_ptr, u32 **err_flags_ptr)
 {
 	int err;
 
-	memset(&cpu.flags, 0, sizeof cpu.flags);
-	cpu.level = 3;
+	memset(&cpu.flags, 0, sizeof cpu.flags);	//cpu flags 0으로 초기화
+	cpu.level = 3;						//386
 
-	if (has_eflag(X86_EFLAGS_AC))
-		cpu.level = 4;
+	if (has_eflag(X86_EFLAGS_AC))					// eflag 18 == AC, Alignment check (486SX+ only)	
+		cpu.level = 4;					//x86
 
 	get_cpuflags();
 	err = check_cpuflags();
 
-	if (test_bit(X86_FEATURE_LM, cpu.flags))
+	if (test_bit(X86_FEATURE_LM, cpu.flags))  // 20160827 완료 
 		cpu.level = 64;
 
 	if (err == 0x01 &&
